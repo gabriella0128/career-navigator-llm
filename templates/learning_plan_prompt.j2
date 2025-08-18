@@ -1,0 +1,26 @@
+{
+  "seed": {{ seed|tojson }},
+  "improvements": {{ improvements|tojson }},
+  "resume": {{ resume|tojson }},
+  "rules": [
+    "improvements와 resume를 통합해 2~3개의 SMART 목표 작성",
+    "각 목표마다 3~5개의 실행 과제 생성(1~2시간 단위)",
+    "가능하면 공식 문서/레퍼런스 링크 포함",
+    "weekNo(1~4)로 주차 배치",
+    "JSON만 출력: {\"goals\": [...]} 스키마 준수"
+  ],
+  "output_schema": {
+    "goals": [
+      {
+        "title": "string",
+        "metric": "string",
+        "targetValue": "string",
+        "priority": 1,
+        "category": "tech|project|system|process|behavior",
+        "tasks": [
+          {"taskTitle":"string","resourceUrl":"string","estMinutes":60,"weekNo":1}
+        ]
+      }
+    ]
+  }
+}

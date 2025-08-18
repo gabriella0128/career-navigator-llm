@@ -1,0 +1,20 @@
+{
+  "seed": {{ seed|tojson }},
+  "question": {{ question|tojson }},
+  "answer": {{ answer|tojson }},
+  "rules": [
+    "총점 score_overall는 1~5의 정수",
+    "scores: structure/specificity/impact/clarity 각 1~5 정수",
+    "strength: 2~3개의 구체적 강점 문장",
+    "improvements: 3~5개의 실행 지향 개선 제안(예: 지표/행동/근거 포함)",
+    "피드백은 5~7문장으로 핵심 조언과 근거 포함",
+    "오직 JSON만 출력"
+  ],
+  "output_schema": {
+    "score_overall": 4,
+    "scores": { "structure": 4, "specificity": 3, "impact": 4, "clarity": 4 },
+    "feedback": "string",
+    "strength": ["string", "..."],
+    "improvements": ["string", "..."]
+  }
+}
