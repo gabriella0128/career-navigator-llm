@@ -17,7 +17,6 @@ env:
   SERVICE: llm
   IMAGE_NAME: carnav-llm
   DOCKERHUB_NAMESPACE: gabicate
-  FULL_IMAGE: docker.io/${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}
   INFRA_REPO: gabriella0128/career-navigator-infra
 
 jobs:
@@ -28,17 +27,29 @@ jobs:
 
       - name: Set TAG
         id: meta
-        run: echo "TAG=main-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        run: echo "TAG=main-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
-      # 1) Docker Hub 로그인 (Secrets 필요)
+      - name: Compose FULL_IMAGE
+        run: echo "FULL_IMAGE=docker.io/${DOCKERHUB_NAMESPACE}/${IMAGE_NAME}" >> "$GITHUB_ENV"
+
+      # PR에서는 도커 허브 푸시 안 하고, 빌드만 체크(선택)
+      - name: Build (no push) on PR
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+
+      # master push 에서만 로그인 + 푸시 + 아티팩트 + 통지
       - name: Login to Docker Hub
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 2) 빌드 & 푸시 (두 태그 동시 푸시: 고정 v1 + 커밋태그)
       - name: Build and push
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -47,37 +58,16 @@ jobs:
             ${{ env.FULL_IMAGE }}:v1
             ${{ env.FULL_IMAGE }}:${{ steps.meta.outputs.TAG }}
 
-      # (선택) TAR 아티팩트도 계속 쓰고 싶다면 유지
       - name: Save image as TAR (optional)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         run: |
           mkdir -p /tmp/carnav
-          docker pull ${{ env.FULL_IMAGE }}:${{ steps.meta.outputs.TAG }}
-          docker save -o /tmp/carnav/${{ env.SERVICE }}-${{ steps.meta.outputs.TAG }}.tar \
-            ${{ env.FULL_IMAGE }}:${{ steps.meta.outputs.TAG }}
+          docker pull "${{ env.FULL_IMAGE }}:${{ steps.meta.outputs.TAG }}"
+          docker save -o "/tmp/carnav/${{ env.SERVICE }}-${{ steps.meta.outputs.TAG }}.tar" \
+            "${{ env.FULL_IMAGE }}:${{ steps.meta.outputs.TAG }}"
 
       - name: Upload artifact (optional)
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.SERVICE }}-image-${{ steps.meta.outputs.TAG }}
-          path: /tmp/carnav/${{ env.SERVICE }}-${{ steps.meta.outputs.TAG }}.tar
-          retention-days: 7
-
-      # 3) 인프라 레포에 배포 트리거(풀 경로/태그 전달)
-      - name: Notify infra (repository_dispatch)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token:      ${{ secrets.INFRA_REPO_TOKEN }}
-          repository: ${{ env.INFRA_REPO }}
-          event-type: deploy
-          client-payload: |
-            {
-              "service": "llm",
-              "tag": "${{ steps.meta.outputs.TAG }}",
-              "repo": "${{ github.repository }}",
-              "run_id": "${{ github.run_id }}",
-              "artifact_name": "llm-image-${{ steps.meta.outputs.TAG }}",
-              "image_name": "carnav-llm",
-              "full_image": "${{ env.FULL_IMAGE }}"
-            }
+          name: ${{ env
