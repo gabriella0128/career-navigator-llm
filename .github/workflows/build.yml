@@ -1,9 +1,9 @@
 name: LLM | Build → TAR → Upload(artifact) → Notify infra
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -38,7 +38,7 @@ jobs:
             $IMAGE_NAME:${{ steps.meta.outputs.TAG }}
 
       - name: Upload artifact (TAR)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.SERVICE }}-image-${{ steps.meta.outputs.TAG }}
@@ -46,7 +46,7 @@ jobs:
           retention-days: 7
 
       - name: Notify infra (repository_dispatch)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         uses: peter-evans/repository-dispatch@v3
         with:
           token:      ${{ secrets.INFRA_REPO_TOKEN }}
