@@ -1,0 +1,63 @@
+name: LLM | Build → TAR → Upload(artifact) → Notify infra
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  SERVICE: llm
+  IMAGE_NAME: carnav-llm
+  INFRA_REPO: gabriella0128/career-navigator-infra
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set TAG
+        id: meta
+        run: echo "TAG=main-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Docker build
+        run: |
+          docker build -t $IMAGE_NAME:${{ steps.meta.outputs.TAG }} -t $IMAGE_NAME:latest .
+
+      - name: Save image as TAR
+        run: |
+          mkdir -p /tmp/carnav
+          docker save -o /tmp/carnav/${{ env.SERVICE }}-${{ steps.meta.outputs.TAG }}.tar \
+            $IMAGE_NAME:${{ steps.meta.outputs.TAG }}
+
+      - name: Upload artifact (TAR)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.SERVICE }}-image-${{ steps.meta.outputs.TAG }}
+          path: /tmp/carnav/${{ env.SERVICE }}-${{ steps.meta.outputs.TAG }}.tar
+          retention-days: 7
+
+      - name: Notify infra (repository_dispatch)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token:      ${{ secrets.INFRA_REPO_TOKEN }}
+          repository: ${{ env.INFRA_REPO }}
+          event-type: deploy
+          client-payload: |
+            {
+              "service": "llm",
+              "tag": "${{ steps.meta.outputs.TAG }}",
+              "repo": "${{ github.repository }}",
+              "run_id": "${{ github.run_id }}",
+              "artifact_name": "llm-image-${{ steps.meta.outputs.TAG }}",
+              "image_name": "carnav-llm"
+            }
