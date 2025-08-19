@@ -7,3 +7,8 @@ app = FastAPI(title="Career Navigator LLM", version="1.0.0")
 
 app.include_router(interview_router, tags=["interview"])
 app.include_router(learning_router, tags=["learning"])
+
+
+@app.get("/health")
+def health():
+    return {"ok": True}
