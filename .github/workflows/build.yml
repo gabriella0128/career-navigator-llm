@@ -59,22 +59,6 @@ jobs:
             ${{ env.FULL_IMAGE }}:v1
             ${{ env.FULL_IMAGE }}:${{ steps.meta.outputs.TAG }}
 
-      - name: Save image as TAR (optional)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-        run: |
-          mkdir -p /tmp/carnav
-          docker pull "${{ env.FULL_IMAGE }}:${{ steps.meta.outputs.TAG }}"
-          docker save -o "/tmp/carnav/${{ env.SERVICE }}-${{ steps.meta.outputs.TAG }}.tar" \
-            "${{ env.FULL_IMAGE }}:${{ steps.meta.outputs.TAG }}"
-
-      - name: Upload artifact (optional)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.SERVICE }}-image-${{ steps.meta.outputs.TAG }}
-          path: /tmp/carnav/${{ env.SERVICE }}-${{ steps.meta.outputs.TAG }}.tar
-          retention-days: 7
-
       - name: Notify infra (repository_dispatch)
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         uses: peter-evans/repository-dispatch@v3
